@@ -1,0 +1,20 @@
+<authorizes>
+    <authorize>
+        <appcode>CSSD</appcode>
+        <actions>
+            <action>cssd.instrument.submitRequirement</action>
+            <action>cssd.instrument.queryList</action>
+            <action>cssd.instrument.queryByPk</action>
+            <action>cssd.instrument.registerCleaning</action>
+            <action>cssd.instrument.registerLack</action>
+            <action>cssd.instrument.resolveLack</action>
+            <action>cssd.instrument.confirmRelease</action>
+            <action>cssd.instrument.sendToOR</action>
+            <action>cssd.sterbatch.create</action>
+            <action>cssd.sterbatch.finish</action>
+            <action>cssd.sterbatch.queryList</action>
+            <action>cssd.lackrecord.queryList</action>
+            <action>cssd.releaserecord.queryList</action>
+        </actions>
+    </authorize>
+</authorizes>

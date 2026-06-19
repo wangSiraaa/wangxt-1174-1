@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component>
+    <implementation class="nc.impl.cssd.instrument.CSSDInstrumentServiceImpl"/>
+    <interface interface="nc.itf.cssd.instrument.ICSSDInstrumentService"/>
+</component>

@@ -1,0 +1,30 @@
+{
+  "name": "cssd-instrument-tracking",
+  "version": "1.0.0",
+  "description": "医院消毒供应中心器械包追踪系统",
+  "main": "index.js",
+  "scripts": {
+    "dev": "webpack-dev-server --mode development",
+    "build": "webpack --mode production",
+    "build:operation": "webpack --mode production --env.page=operation",
+    "build:disinfector": "webpack --mode production --env.page=disinfector",
+    "build:quality": "webpack --mode production --env.page=quality"
+  },
+  "dependencies": {
+    "react": "^16.14.0",
+    "react-dom": "^16.14.0",
+    "nc-lightapp-front": "^2.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.0.0",
+    "@babel/preset-env": "^7.0.0",
+    "@babel/preset-react": "^7.0.0",
+    "babel-loader": "^8.0.0",
+    "css-loader": "^3.0.0",
+    "html-webpack-plugin": "^4.0.0",
+    "style-loader": "^1.0.0",
+    "webpack": "^4.0.0",
+    "webpack-cli": "^3.0.0",
+    "webpack-dev-server": "^3.0.0"
+  }
+}
