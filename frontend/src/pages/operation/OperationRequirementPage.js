@@ -1,275 +1,129 @@
 import React, { Component } from 'react';
-import ReactDOM from 'react-dom';
-import { createPage, ajax, base, toast } from 'nc-lightapp-front';
+import { Table, Button, Modal, Input, Select, DatePicker, Form, Space, message, Tag } from 'antd';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { ajax, STATUS_MAP } from '../../mock/api';
+import dayjs from 'dayjs';
 
-const { NCFormControl, NCButton, NCDatePicker, NCTable, NCTableColumn, NCModal, NCSelect, NCOption } = base;
+const todayStr = dayjs().format('YYYY-MM-DD');
+
+const STATUS_COLORS = { 0: 'default', 1: 'processing', 2: 'processing', 3: 'warning', 4: 'warning', 5: 'success', 6: 'blue', 7: 'error', 9: 'error' };
 
 class OperationRequirementPage extends Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            showModal: false,
-            formData: {
-                package_code: '',
-                package_name: '',
-                package_type: '普通器械包',
-                operation_room: '',
-                require_date: '',
-                remark: ''
-            },
-            items: [
-                { instrument_code: '', instrument_name: '', instrument_spec: '', plan_qty: 1, actual_qty: 0 }
-            ],
-            listData: []
-        };
-    }
+    state = {
+        showModal: false,
+        listData: [],
+        formData: { package_code: '', package_name: '', package_type: '普通器械包', operation_room: '', require_date: todayStr, remark: '' },
+        items: [{ key: '1', instrument_code: '', instrument_name: '', instrument_spec: '', plan_qty: 1 }]
+    };
+    itemKeyCounter = 2;
 
-    componentDidMount() {
-        this.loadList();
-    }
+    componentDidMount() { this.loadList(); }
 
     loadList = () => {
-        ajax({
-            url: '/nccloud/cssd.instrument.queryList.do',
-            method: 'POST',
-            data: {},
-            success: (res) => {
-                if (res.success && res.data) {
-                    this.setState({ listData: res.data });
-                }
-            }
-        });
+        ajax({ url: '/nccloud/cssd.instrument.queryList.do', data: {}, success: (res) => { if (res.success) this.setState({ listData: res.data }); } });
     };
 
     handleSubmit = () => {
         const { formData, items } = this.state;
         if (!formData.package_code || !formData.package_name || !formData.operation_room || !formData.require_date) {
-            toast({ color: 'warning', content: '请填写必填项' });
-            return;
+            message.warning('请填写必填项'); return;
         }
         if (items.length === 0 || !items[0].instrument_code) {
-            toast({ color: 'warning', content: '请添加器械明细' });
-            return;
+            message.warning('请添加器械明细'); return;
         }
-
-        const billData = {
-            parent: {
-                ...formData,
-                package_status: 0
-            },
-            children: {
-                cssd_instritem: items
-            }
-        };
-
         ajax({
             url: '/nccloud/cssd.instrument.submitRequirement.do',
-            method: 'POST',
-            data: { billData: JSON.stringify(billData) },
+            data: { billData: JSON.stringify({ parent: { ...formData, package_status: 0 }, _details: { cssd_instritem: items.map(it => ({ ...it, plan_qty: Number(it.plan_qty) || 1 })) } }) },
             success: (res) => {
-                if (res.success) {
-                    toast({ color: 'success', content: '提交成功' });
-                    this.setState({ showModal: false });
-                    this.resetForm();
-                    this.loadList();
-                } else {
-                    toast({ color: 'danger', content: res.error ? res.error.message : '提交失败' });
-                }
+                if (res.success) { message.success('提交成功'); this.setState({ showModal: false }); this.resetForm(); this.loadList(); }
+                else { message.error(res.error?.message || '提交失败'); }
             }
         });
     };
 
     resetForm = () => {
+        this.itemKeyCounter = 2;
         this.setState({
-            formData: {
-                package_code: '',
-                package_name: '',
-                package_type: '普通器械包',
-                operation_room: '',
-                require_date: '',
-                remark: ''
-            },
-            items: [
-                { instrument_code: '', instrument_name: '', instrument_spec: '', plan_qty: 1, actual_qty: 0 }
-            ]
+            formData: { package_code: '', package_name: '', package_type: '普通器械包', operation_room: '', require_date: todayStr, remark: '' },
+            items: [{ key: '1', instrument_code: '', instrument_name: '', instrument_spec: '', plan_qty: 1 }]
         });
     };
 
-    handleFormChange = (field, value) => {
-        this.setState(prev => ({
-            formData: { ...prev.formData, [field]: value }
-        }));
-    };
-
+    handleFormChange = (field, value) => { this.setState(prev => ({ formData: { ...prev.formData, [field]: value } })); };
     handleItemChange = (index, field, value) => {
-        this.setState(prev => {
-            const items = [...prev.items];
-            items[index] = { ...items[index], [field]: value };
-            return { items };
-        });
+        this.setState(prev => { const items = [...prev.items]; items[index] = { ...items[index], [field]: value }; return { items }; });
     };
+    addItem = () => { this.setState(prev => ({ items: [...prev.items, { key: String(this.itemKeyCounter++), instrument_code: '', instrument_name: '', instrument_spec: '', plan_qty: 1 }] })); };
+    removeItem = (index) => { this.setState(prev => ({ items: prev.items.filter((_, i) => i !== index) })); };
 
-    addItem = () => {
-        this.setState(prev => ({
-            items: [...prev.items, { instrument_code: '', instrument_name: '', instrument_spec: '', plan_qty: 1, actual_qty: 0 }]
-        }));
-    };
-
-    removeItem = (index) => {
-        this.setState(prev => ({
-            items: prev.items.filter((_, i) => i !== index)
-        }));
-    };
-
-    getStatusText = (status) => {
-        const statusMap = {
-            0: '已提交需求',
-            1: '清洗中',
-            2: '灭菌中',
-            3: '缺件待处理',
-            4: '待放行',
-            5: '已放行',
-            6: '已发往手术室',
-            7: '已退回',
-            9: '灭菌失败'
-        };
-        return statusMap[status] || '未知';
-    };
+    columns = [
+        { title: '包号', dataIndex: 'package_code', key: 'package_code', width: 140 },
+        { title: '包名称', dataIndex: 'package_name', key: 'package_name', width: 160 },
+        { title: '包类型', dataIndex: 'package_type', key: 'package_type', width: 110 },
+        { title: '手术室', dataIndex: 'operation_room', key: 'operation_room', width: 110 },
+        { title: '需求日期', dataIndex: 'require_date', key: 'require_date', width: 110 },
+        { title: '灭菌批次号', dataIndex: 'sterilization_batchno', key: 'sterilization_batchno', width: 140 },
+        {
+            title: '状态', dataIndex: 'package_status', key: 'package_status', width: 110,
+            render: (v) => <Tag color={STATUS_COLORS[v]}>{STATUS_MAP[v] || '未知'}</Tag>
+        },
+        { title: '是否缺件', dataIndex: 'lack_flag', key: 'lack_flag', width: 80, render: (v) => v === 1 ? <Tag color="warning">是</Tag> : '否' },
+        { title: '备注', dataIndex: 'remark', key: 'remark', ellipsis: true }
+    ];
 
     render() {
         const { showModal, formData, items, listData } = this.state;
-
         return (
-            <div className="page-container" style={{ padding: '20px' }}>
-                <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2 style={{ margin: 0 }}>手术室 - 器械包需求管理</h2>
-                    <NCButton colors="primary" onClick={() => this.setState({ showModal: true })}>
-                        提交器械包需求
-                    </NCButton>
+            <div className="cssd-page-container">
+                <div className="cssd-page-header">
+                    <h2>手术室 — 器械包需求管理</h2>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => { this.resetForm(); this.setState({ showModal: true }); }}>提交器械包需求</Button>
                 </div>
 
-                <NCTable data={listData} bordered>
-                    <NCTableColumn title="包号" dataIndex="package_code" key="package_code" />
-                    <NCTableColumn title="包名称" dataIndex="package_name" key="package_name" />
-                    <NCTableColumn title="包类型" dataIndex="package_type" key="package_type" />
-                    <NCTableColumn title="手术室" dataIndex="operation_room" key="operation_room" />
-                    <NCTableColumn title="需求日期" dataIndex="require_date" key="require_date" />
-                    <NCTableColumn title="灭菌批次号" dataIndex="sterilization_batchno" key="sterilization_batchno" />
-                    <NCTableColumn
-                        title="状态"
-                        dataIndex="package_status"
-                        key="package_status"
-                        render={(text) => {
-                            const colorMap = { 5: 'green', 6: 'blue', 9: 'red', 3: 'orange' };
-                            return <span style={{ color: colorMap[text] || '#333' }}>{this.getStatusText(text)}</span>;
-                        }}
-                    />
-                    <NCTableColumn title="是否缺件" dataIndex="lack_flag" key="lack_flag" render={(text) => text === 1 ? '是' : '否'} />
-                    <NCTableColumn title="备注" dataIndex="remark" key="remark" />
-                </NCTable>
+                <Table dataSource={listData} columns={this.columns} rowKey="pk_instrpkg" bordered size="small" pagination={{ pageSize: 10 }} childrenColumnName="__no_tree__" />
 
-                <NCModal
-                    show={showModal}
-                    onClose={() => this.setState({ showModal: false })}
-                    size="xl"
+                <Modal title="提交器械包需求" open={showModal} onCancel={() => this.setState({ showModal: false })} width={720}
+                    footer={[
+                        <Button key="cancel" onClick={() => this.setState({ showModal: false })}>取消</Button>,
+                        <Button key="submit" type="primary" onClick={this.handleSubmit}>提交</Button>
+                    ]}
                 >
-                    <NCModal.Header>
-                        <NCModal.Title>提交器械包需求</NCModal.Title>
-                    </NCModal.Header>
-                    <NCModal.Body>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '4px' }}>器械包编号 <span style={{ color: 'red' }}>*</span></label>
-                                <NCFormControl
-                                    value={formData.package_code}
-                                    onChange={(v) => this.handleFormChange('package_code', v)}
-                                    placeholder="请输入器械包编号"
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '4px' }}>器械包名称 <span style={{ color: 'red' }}>*</span></label>
-                                <NCFormControl
-                                    value={formData.package_name}
-                                    onChange={(v) => this.handleFormChange('package_name', v)}
-                                    placeholder="请输入器械包名称"
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '4px' }}>包类型</label>
-                                <NCSelect value={formData.package_type} onChange={(v) => this.handleFormChange('package_type', v)}>
-                                    <NCOption value="普通器械包">普通器械包</NCOption>
-                                    <NCOption value="手术器械包">手术器械包</NCOption>
-                                    <NCOption value="专科器械包">专科器械包</NCOption>
-                                </NCSelect>
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '4px' }}>手术室 <span style={{ color: 'red' }}>*</span></label>
-                                <NCFormControl
-                                    value={formData.operation_room}
-                                    onChange={(v) => this.handleFormChange('operation_room', v)}
-                                    placeholder="请输入手术室名称"
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '4px' }}>需求日期 <span style={{ color: 'red' }}>*</span></label>
-                                <NCDatePicker
-                                    value={formData.require_date}
-                                    onChange={(v) => this.handleFormChange('require_date', v)}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '4px' }}>备注</label>
-                                <NCFormControl
-                                    value={formData.remark}
-                                    onChange={(v) => this.handleFormChange('remark', v)}
-                                    placeholder="请输入备注"
-                                />
-                            </div>
-                        </div>
+                    <Form labelCol={{ span: 6 }} wrapperCol={{ span: 16 }}>
+                        <Form.Item label="器械包编号" required><Input value={formData.package_code} onChange={e => this.handleFormChange('package_code', e.target.value)} placeholder="请输入器械包编号" /></Form.Item>
+                        <Form.Item label="器械包名称" required><Input value={formData.package_name} onChange={e => this.handleFormChange('package_name', e.target.value)} placeholder="请输入器械包名称" /></Form.Item>
+                        <Form.Item label="包类型">
+                            <Select value={formData.package_type} onChange={v => this.handleFormChange('package_type', v)}>
+                                <Select.Option value="普通器械包">普通器械包</Select.Option>
+                                <Select.Option value="手术器械包">手术器械包</Select.Option>
+                                <Select.Option value="专科器械包">专科器械包</Select.Option>
+                            </Select>
+                        </Form.Item>
+                        <Form.Item label="手术室" required><Input value={formData.operation_room} onChange={e => this.handleFormChange('operation_room', e.target.value)} placeholder="请输入手术室名称" /></Form.Item>
+                        <Form.Item label="需求日期" required><DatePicker style={{ width: '100%' }} value={formData.require_date ? dayjs(formData.require_date) : null} onChange={(_, ds) => this.handleFormChange('require_date', ds)} /></Form.Item>
+                        <Form.Item label="备注"><Input.TextArea value={formData.remark} onChange={e => this.handleFormChange('remark', e.target.value)} placeholder="请输入备注" rows={2} /></Form.Item>
+                    </Form>
 
-                        <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h4 style={{ margin: 0 }}>器械明细</h4>
-                            <NCButton onClick={this.addItem}>添加器械</NCButton>
-                        </div>
-                        <NCTable data={items} bordered>
-                            <NCTableColumn title="器械编码" key="instrument_code" render={(text, record, index) => (
-                                <NCFormControl
-                                    value={record.instrument_code}
-                                    onChange={(v) => this.handleItemChange(index, 'instrument_code', v)}
-                                />
-                            )} />
-                            <NCTableColumn title="器械名称" key="instrument_name" render={(text, record, index) => (
-                                <NCFormControl
-                                    value={record.instrument_name}
-                                    onChange={(v) => this.handleItemChange(index, 'instrument_name', v)}
-                                />
-                            )} />
-                            <NCTableColumn title="规格型号" key="instrument_spec" render={(text, record, index) => (
-                                <NCFormControl
-                                    value={record.instrument_spec}
-                                    onChange={(v) => this.handleItemChange(index, 'instrument_spec', v)}
-                                />
-                            )} />
-                            <NCTableColumn title="计划数量" key="plan_qty" render={(text, record, index) => (
-                                <NCFormControl
-                                    type="number"
-                                    value={record.plan_qty}
-                                    onChange={(v) => this.handleItemChange(index, 'plan_qty', Number(v))}
-                                />
-                            )} />
-                            <NCTableColumn title="操作" key="action" render={(text, record, index) => (
-                                <NCButton colors="danger2" onClick={() => this.removeItem(index)}>删除</NCButton>
-                            )} />
-                        </NCTable>
-                    </NCModal.Body>
-                    <NCModal.Footer>
-                        <NCButton onClick={() => this.setState({ showModal: false })}>取消</NCButton>
-                        <NCButton colors="primary" onClick={this.handleSubmit}>提交</NCButton>
-                    </NCModal.Footer>
-                </NCModal>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, marginTop: 16 }}>
+                        <h4 style={{ margin: 0 }}>器械明细</h4>
+                        <Button size="small" icon={<PlusOutlined />} onClick={this.addItem}>添加器械</Button>
+                    </div>
+                    <Table dataSource={items} bordered size="small" pagination={false} rowKey="key"
+                        columns={[
+                            { title: '器械编码', render: (_, __, i) => <Input size="small" value={items[i].instrument_code} onChange={e => this.handleItemChange(i, 'instrument_code', e.target.value)} /> },
+                            { title: '器械名称', render: (_, __, i) => <Input size="small" value={items[i].instrument_name} onChange={e => this.handleItemChange(i, 'instrument_name', e.target.value)} /> },
+                            { title: '规格型号', render: (_, __, i) => <Input size="small" value={items[i].instrument_spec} onChange={e => this.handleItemChange(i, 'instrument_spec', e.target.value)} /> },
+                            { title: '计划数量', width: 90, render: (_, __, i) => <InputNumber size="small" min={1} value={items[i].plan_qty} onChange={v => this.handleItemChange(i, 'plan_qty', v)} /> },
+                            { title: '操作', width: 60, render: (_, __, i) => <Button size="small" danger icon={<DeleteOutlined />} onClick={() => this.removeItem(i)} /> }
+                        ]}
+                    />
+                </Modal>
             </div>
         );
     }
 }
 
-export default createPage({})(OperationRequirementPage);
+function InputNumber({ value, onChange, ...rest }) {
+    return <Input type="number" value={value} onChange={e => onChange(Number(e.target.value) || 0)} {...rest} />;
+}
+
+export default OperationRequirementPage;

@@ -1,56 +1,78 @@
 import React, { Component } from 'react';
-import { createPage, base } from 'nc-lightapp-front';
+import { ConfigProvider, Tabs, Button, Space, Typography } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
+import zhCN from 'antd/locale/zh_CN';
+import OperationRequirementPage from '../operation/OperationRequirementPage';
+import DisinfectorWorkbench from '../disinfector/DisinfectorWorkbench';
+import QualityNursePage from '../quality/QualityNursePage';
+import { resetMockData } from '../../mock/api';
 
-const { NCTabs, NCTabPane } = base;
+const { Title, Text } = Typography;
 
 class CSSDHomePage extends Component {
-    state = {
-        activeKey: 'operation'
+    state = { activeKey: 'operation', resetLoading: false };
+
+    handleReset = () => {
+        this.setState({ resetLoading: true });
+        resetMockData();
+        setTimeout(() => {
+            this.setState({ resetLoading: false });
+            window.location.reload();
+        }, 300);
     };
+
+    items = [
+        {
+            key: 'operation',
+            label: '🏥 手术室（提交需求）',
+            children: <OperationRequirementPage />
+        },
+        {
+            key: 'disinfector',
+            label: '🧹 消毒员（清洗灭菌）',
+            children: <DisinfectorWorkbench />
+        },
+        {
+            key: 'quality',
+            label: '✅ 质控护士（放行确认）',
+            children: <QualityNursePage />
+        }
+    ];
 
     render() {
         return (
-            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-                <div style={{
-                    padding: '16px 24px',
-                    background: 'linear-gradient(90deg, #1890ff 0%, #096dd9 100%)',
-                    color: 'white',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                }}>
-                    <h1 style={{ margin: 0, fontSize: '20px' }}>医院消毒供应中心 - 器械包追踪系统</h1>
-                    <p style={{ margin: '4px 0 0 0', opacity: 0.9, fontSize: '13px' }}>
-                        Central Sterile Supply Department - Instrument Package Tracking
-                    </p>
+            <ConfigProvider locale={zhCN}>
+                <div style={{ background: 'linear-gradient(90deg, #1890ff 0%, #096dd9 100%)', padding: '16px 24px', color: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <Title level={4} style={{ margin: 0, color: 'white' }}>医院消毒供应中心 — 器械包追踪系统</Title>
+                            <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13 }}>Central Sterile Supply Department · Instrument Package Tracking</Text>
+                        </div>
+                        <Space>
+                            <Button
+                                icon={<ReloadOutlined />}
+                                onClick={this.handleReset}
+                                loading={this.state.resetLoading}
+                                size="small"
+                                style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)', color: 'white' }}
+                            >
+                                重置演示数据
+                            </Button>
+                        </Space>
+                    </div>
                 </div>
-
-                <div style={{ flex: 1, overflow: 'auto' }}>
-                    <NCTabs activeKey={this.state.activeKey} onChange={(k) => this.setState({ activeKey: k })}>
-                        <NCTabPane tab={<span>🏥 手术室（提交需求）</span>} key="operation">
-                            <iframe
-                                src="./operation.html"
-                                style={{ width: '100%', height: 'calc(100vh - 140px)', border: 'none' }}
-                                title="手术室"
-                            />
-                        </NCTabPane>
-                        <NCTabPane tab={<span>🧹 消毒员（清洗灭菌）</span>} key="disinfector">
-                            <iframe
-                                src="./disinfector.html"
-                                style={{ width: '100%', height: 'calc(100vh - 140px)', border: 'none' }}
-                                title="消毒员"
-                            />
-                        </NCTabPane>
-                        <NCTabPane tab={<span>✅ 质控护士（放行确认）</span>} key="quality">
-                            <iframe
-                                src="./quality.html"
-                                style={{ width: '100%', height: 'calc(100vh - 140px)', border: 'none' }}
-                                title="质控护士"
-                            />
-                        </NCTabPane>
-                    </NCTabs>
+                <div style={{ padding: '0 16px' }}>
+                    <Tabs
+                        activeKey={this.state.activeKey}
+                        onChange={(k) => this.setState({ activeKey: k })}
+                        items={this.items}
+                        size="large"
+                        style={{ background: 'white', padding: '0 16px', borderRadius: '0 0 8px 8px' }}
+                    />
                 </div>
-            </div>
+            </ConfigProvider>
         );
     }
 }
 
-export default createPage({})(CSSDHomePage);
+export default CSSDHomePage;
